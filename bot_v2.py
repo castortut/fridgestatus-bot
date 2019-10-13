@@ -11,18 +11,16 @@ LOG_FILE = "log.txt"
 """
 Example reply from api:
 
-{"updated": 1570918054.478339, "switches": [tuote1:false, tuote2:true]}
+{"updated": 1570918054.478339, "products": {'jäätelö': True, 'tölkki 2€': False}
 """
 
-# TODO: error loggin in exception
-# TODO: replace dummy json with data from getSwitchData()
 
 
 def getSwitchData():
     req = requests.get(CASTOR_API_URL)
     jsonreply = json.loads( req.content.decode("utf-8") )
     
-    return jsonreply["updated"], jsonreply["switches"]
+    return jsonreply["updated"], jsonreply["products"]
 
 
 
@@ -50,8 +48,7 @@ def formatStates(states):
     statedict = {}
 
     for key in states:
-
-        if key == True:
+        if states[key] == True:
             statedict[key] = "jäljellä"
         else:
             statedict[key] = "loppu"
@@ -61,9 +58,9 @@ def formatStates(states):
 
 
 def cmdFridge(token, chatID):
-    #lastUpdated, states = getSwitchData()
-    lastUpdated = 7651687654.1
-    states = json.loads( '{"tuote1":false, "tuoteeeee2":true}' )
+    lastUpdated, states = getSwitchData()
+    #lastUpdated = 7651687654.1
+    #states = json.loads( '{"tuote1":false, "tuoteeeee2":true}' )
 
     lastUpdated = datetime.utcfromtimestamp(lastUpdated).strftime("%d.%m.%Y %H:%M:%S")
     states = formatStates(states)
@@ -89,10 +86,21 @@ def cmdFridge(token, chatID):
 
 
 
+def writeLog(msg, addEndline=True):
+
+    with open(LOG_FILE, "a") as f:
+        f.write("\n")
+        f.write(msg)
+        
+        if addEndline == True:
+            f.write("\n---------------------------------------------\n")
+        
+
+
 def main():
     
-    with open("./.token", "r") as tokenFile:
-        token = tokenFile.read().rstrip("\n")
+    with open("./.token", "r") as f:
+        token = f.read().rstrip("\n")
         
     handled = []    
 
@@ -103,7 +111,7 @@ def main():
             errCode = result["error_code"]
             errDesc = result["description"]
             
-            print("Error {}: {}".format(errCode, errDesc) )
+            writeLog("Error {}: {}\n".format(errCode, errDesc) )
             break
 
         
@@ -124,16 +132,9 @@ def main():
         
         # action message was send (bot/person was removed/added etc)
         except KeyError:
-            
-            with open(LOG_FILE) as f:
-                msg = data[len(data)-1]
+            writeLog("json reply parse error, reply: ", False)
+            writeLog( json.dumps(data[len(data)-1], indent=4, sort_keys=True) )
                 
-                f.write("--------------------------------------------------")
-                f.write(msg)
-                f.write("json reply parse error\n")
-                f.write( json.dumps(msg, indent=4, sort_keys=True) )
-                f.write("--------------------------------------------------")
-            
         
         chatID = data[len(data)-1]["message"]["chat"]["id"]
         command = command.lstrip("/").replace("@CastorFridgeBot", " ").rstrip(" ").lower()
