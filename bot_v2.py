@@ -24,13 +24,10 @@ def getSwitchData():
 
 
 
-def getUpdates(token, offset=None):
-    url = BOT_BASE_URL + token + "/getupdates" #+ "/getUpdates?timeout=100"
-    
-    if offset:
-        url += "&offset={}".format(offset + 1)
-        
-    req = requests.get(url)
+def getUpdates(token, offset=0):
+    url = BOT_BASE_URL + token + "/getUpdates" #+ "/getUpdates?timeout=100"
+    params = {'offset':offset}
+    req = requests.get(url, data=params)
     
     return json.loads( req.content.decode("utf-8") )
 
@@ -100,51 +97,55 @@ def writeLog(msg, addEndline=True):
 def main():
     
     with open("./.token", "r") as f:
-        token = f.read().rstrip("\n")
+        token = f.read().rstrip(" \n")
         
-    handled = []    
+        
+    updateID = 0
 
     while True: 
-        result = getUpdates(token)
+        result = getUpdates(token, updateID)
         
         if result["ok"] == False:
             errCode = result["error_code"]
             errDesc = result["description"]
             
-            writeLog("Error {}: {}\n".format(errCode, errDesc) )
-            break
-
-        
-        data = result["result"]
-        msgID = data[len(data)-1]["message"]["message_id"]
-        
-        if msgID in handled:
+            writeLog( "{} Error {}: {}\n".format(datetime.now(), 
+                                                 errCode, 
+                                                 errDesc) )
+            #print("no reply")             
+            
             continue
-            
-        if len(handled) > 1000:
-            handled.clear()
-            
+
+        data = result["result"]
+        
+        if len(data) == 0:
+            continue
+
+        updateID = data[ len(data)-1 ]["update_id"] + 1
+        
+        
         command = ""
         chatID = ""
         
         try:
             command = data[len(data)-1]["message"]["text"]
-        
+            pass
+
         # action message was send (bot/person was removed/added etc)
         except KeyError:
             writeLog("json reply parse error, reply: ", False)
             writeLog( json.dumps(data[len(data)-1], indent=4, sort_keys=True) )
                 
-        
+                
         chatID = data[len(data)-1]["message"]["chat"]["id"]
         command = command.lstrip("/").replace("@CastorFridgeBot", " ").rstrip(" ").lower()
-
+        
+        
         if command == "fridge":
             cmdFridge(token, chatID)
 
 
-        handled.append(msgID)
-                
+
     
 if __name__ == "__main__":
     main()
