@@ -55,11 +55,18 @@ def formatStates(states):
 
 
 def cmdFridge(token, chatID):
-    lastUpdated, states = getSwitchData()
+    lastUpdated = ""
+    states = {}
+
+    try:
+        lastUpdated, states = getSwitchData()
+    except:
+        writeLog("errorneus reply")
+    
     #lastUpdated = 7651687654.1
     #states = json.loads( '{"tuote1":false, "tuoteeeee2":true}' )
 
-    lastUpdated = datetime.utcfromtimestamp(lastUpdated).strftime("%d.%m.%Y %H:%M:%S")
+    lastUpdated = datetime.fromtimestamp(lastUpdated).strftime("%d.%m.%Y %H:%M:%S")
     states = formatStates(states)
 
     maxlength = 0
