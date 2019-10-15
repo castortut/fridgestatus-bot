@@ -8,15 +8,28 @@ BOT_BASE_URL = "https://api.telegram.org/bot"
 CASTOR_API_URL = "https://fridge0.api.avaruuskerho.fi/"
 LOG_FILE = "log.txt"
 
-"""
-Example reply from api:
-
-{"updated": 1570918054.478339, "products": {'jäätelö': True, 'tölkki 2€': False}
-"""
-
-
 
 def getSwitchData():
+    """Query fridge switch data from castor fridgestatus api
+    
+    
+    Example reply from api:
+
+        {
+            "updated": 1570918054.478339, 
+            "products": 
+                {
+                    'jäätelö': True, 
+                    'tölkki': False
+                }
+        }
+    
+    Returns:
+        timeUpdated (float): unix time of last update of switches' states
+        states (dict):       switch states as dict, e.g. {'jäätelö':False}
+    
+    """
+    
     req = requests.get(CASTOR_API_URL)
     jsonreply = json.loads( req.content.decode("utf-8") )
     
@@ -25,6 +38,23 @@ def getSwitchData():
 
 
 def getUpdates(token, offset=0):
+    """Query updates from telegram bot api
+    
+    
+    Params:
+        token (str):  authentication token for telegram bot api
+        offset (int): number to tell telegram bot server, which messages are 
+                      already been handled. To mark last message as handled, 
+                      pass a number higher than the message's update_id. 
+                      See https://core.telegram.org/bots/api#getupdates for more
+                      information
+    
+    Returns:
+        JSON file containing telegram bot api's response, 
+        see https://core.telegram.org/bots/api#update for more information 
+    
+    """
+    
     url = BOT_BASE_URL + token + "/getUpdates" #+ "/getUpdates?timeout=100"
     params = {'offset':offset}
     req = requests.get(url, data=params)
@@ -34,14 +64,38 @@ def getUpdates(token, offset=0):
 
 
 def sendMessage(token, chatID, msg):
-    url = BOT_BASE_URL + token + "/sendMessage?text={}&chat_id={}&parse_mode=Markdown".format(msg, chatID)
+    """Send telegram message
+    
+    
+    Params:
+        token (str):  authentication token for telegram bot api
+        chatID (int): identification number for chat to send reply to
+        msg (str):    message to send with newline character at the end
+        
+    NOTE: Message is send in markdown mode, which produces monospace text. 
+          It should start with ``` and end with ``` to achieve this effect.
+        
+    """
+    url = BOT_BASE_URL + token + \
+          "/sendMessage?text={}&chat_id={}&parse_mode=Markdown".format(msg, chatID)
     
     if msg is not None:
         requests.get(url)
 
    
     
-def formatStates(states):
+def convertStates(states):
+    """Convert states requested from api into more descriptive form
+    
+    
+    Params:
+        states (dict):  dict containing states, e.g. {'jäätelö':False}
+        
+    Returns:
+        states as dict, but descriptions as values instead of truth values    
+    
+    """
+
     statedict = {}
 
     for key in states:
@@ -55,7 +109,17 @@ def formatStates(states):
 
 
 def cmdFridge(token, chatID):
-    lastUpdated = ""
+    """Handler for command "fridge"
+    
+    Queries states from castor fridge api and sends formatted status message 
+    
+    
+    Params:
+        See function "sendMessage"
+        
+    """
+    
+    lastUpdated = 0
     states = {}
 
     try:
@@ -63,11 +127,8 @@ def cmdFridge(token, chatID):
     except:
         writeLog("errorneus reply")
     
-    #lastUpdated = 7651687654.1
-    #states = json.loads( '{"tuote1":false, "tuoteeeee2":true}' )
-
     lastUpdated = datetime.fromtimestamp(lastUpdated).strftime("%d.%m.%Y %H:%M:%S")
-    states = formatStates(states)
+    states = convertStates(states)
 
     maxlength = 0
     for item in states:
@@ -91,6 +152,14 @@ def cmdFridge(token, chatID):
 
 
 def writeLog(msg, addEndline=True):
+    """Write log message to LOG_FILE with a timestamp
+    
+    
+    Params:
+        msg (str):         message to log
+        addEndline (bool): whether to add "\n" to the end of the message 
+    
+    """
 
     with open(LOG_FILE, "a") as f:
         f.write("\n")
