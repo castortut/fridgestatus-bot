@@ -3,6 +3,7 @@ import os
 import json
 import requests
 from datetime import datetime
+import time
 
 BOT_BASE_URL = "https://api.telegram.org/bot"
 CASTOR_API_URL = "https://fridge0.api.avaruuskerho.fi/"
@@ -182,9 +183,19 @@ def main():
         
         
     updateID = 0
+    result = {}
 
-    while True: 
-        result = getUpdates(token, updateID)
+
+    while True:
+    
+        try:  
+            result = getUpdates(token, updateID)
+        
+        except:
+            writeLog("connection to telegram api failed")
+            time.sleep(60)  # retry after 1 min
+            continue
+            
         
         if result["ok"] == False:
             errCode = result["error_code"]
