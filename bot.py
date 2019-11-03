@@ -119,15 +119,20 @@ def cmdFridge(token, chatID):
         
     """
     
-    lastUpdated = 0
+    unixTime = 0
+    
     states = {}
 
     try:
-        lastUpdated, states = getSwitchData()
+        unixTime, states = getSwitchData()
     except:
         writeLog("errorneus reply")
     
-    lastUpdated = datetime.fromtimestamp(lastUpdated).strftime("%d.%m.%Y %H:%M:%S")
+    if unixTime == "":
+        sendMessage(token, chatID, "`Ei dataa`")
+        return
+        
+    lastUpdated = datetime.fromtimestamp(unixTime).strftime("%d.%m.%Y %H:%M:%S")
     states = convertStates(states)
 
     maxlength = 0
